@@ -28,7 +28,7 @@ public class AppointmentsController : ControllerBase
         var appt = new Appointment
         {
             UserId = UserId,
-            AppointmentDate = dto.AppointmentDate,
+            AppointmentDate = DateTime.SpecifyKind(dto.AppointmentDate, DateTimeKind.Utc),
             ProviderName = dto.ProviderName,
             Purpose = dto.Purpose,
             Notes = dto.Notes

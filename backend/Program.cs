@@ -40,7 +40,9 @@ builder.Services.AddCors(opt => opt.AddPolicy("Dev", p =>
     p.WithOrigins("http://localhost:5173", "http://localhost:5174").AllowAnyHeader().AllowAnyMethod()));
 
 builder.Services.AddControllers(options =>
-    options.Filters.Add<AuditActionFilter>());
+    options.Filters.Add<AuditActionFilter>())
+    .AddJsonOptions(o =>
+        o.JsonSerializerOptions.Converters.Add(new backend.Infrastructure.UtcDateTimeConverter()));
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<AuditActionFilter>();
 builder.Services.AddEndpointsApiExplorer();
