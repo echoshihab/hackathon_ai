@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import api from '@/services/api'
-import DataTable from '@/components/DataTable.vue'
 import FormInput from '@/components/FormInput.vue'
 
 interface Appointment {
@@ -38,7 +37,7 @@ async function remove(id: number) {
   appointments.value = appointments.value.filter(a => a.id !== id)
 }
 
-const formattedRows = computed(() =>
+const formattedAppointments = computed(() =>
   appointments.value.map(a => ({ ...a, appointmentDate: new Date(a.appointmentDate).toLocaleDateString() }))
 )
 
@@ -48,6 +47,8 @@ onMounted(load)
 <template>
   <div class="max-w-2xl mx-auto px-4 py-6">
     <h2 class="text-xl font-bold text-gray-800 mb-4">Step 3: Appointments</h2>
+
+    <!-- Add form -->
     <div class="bg-white rounded-lg border border-gray-200 p-4 mb-6">
       <h3 class="font-semibold text-gray-700 mb-3">Add Appointment</h3>
       <div class="mb-4">
@@ -61,11 +62,39 @@ onMounted(load)
         Add Appointment
       </button>
     </div>
-    <DataTable
-      :columns="['Date', 'Provider', 'Purpose', 'Notes']"
-      :keys="['appointmentDate', 'providerName', 'purpose', 'notes']"
-      :rows="(formattedRows as unknown as Record<string, unknown>[])"
-      @delete="remove"
-    />
+
+    <!-- Cards -->
+    <div v-if="formattedAppointments.length === 0" class="text-center text-gray-400 text-sm py-6">
+      No appointments yet.
+    </div>
+
+    <div v-for="appt in formattedAppointments" :key="appt.id" class="bg-white rounded-lg border border-gray-200 p-4 mb-3">
+      <div class="grid grid-cols-2 gap-x-6 gap-y-3 mb-4">
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Date</p>
+          <p class="text-sm text-gray-800 mt-0.5">{{ appt.appointmentDate }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Provider</p>
+          <p class="text-sm text-gray-800 mt-0.5">{{ appt.providerName }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Purpose</p>
+          <p class="text-sm text-gray-800 mt-0.5">{{ appt.purpose || '—' }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Notes</p>
+          <p class="text-sm text-gray-800 mt-0.5">{{ appt.notes || '—' }}</p>
+        </div>
+      </div>
+      <div class="border-t border-gray-100 pt-3">
+        <button
+          @click="remove(appt.id)"
+          class="w-full py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
   </div>
 </template>
