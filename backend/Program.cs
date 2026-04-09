@@ -1,6 +1,7 @@
 using System.Text;
 using backend.Data;
 using backend.Filters;
+using backend.Middleware;
 using backend.Models;
 using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -67,6 +68,8 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
+app.UseGlobalExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

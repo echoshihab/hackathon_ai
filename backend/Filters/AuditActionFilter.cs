@@ -9,8 +9,13 @@ namespace backend.Filters;
 public class AuditActionFilter : IAsyncActionFilter
 {
     private readonly IAuditService _audit;
+    private readonly ILogger<AuditActionFilter> _logger;
 
-    public AuditActionFilter(IAuditService audit) => _audit = audit;
+    public AuditActionFilter(IAuditService audit, ILogger<AuditActionFilter> logger)
+    {
+        _audit = audit;
+        _logger = logger;
+    }
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
@@ -24,12 +29,15 @@ public class AuditActionFilter : IAsyncActionFilter
         var actionName = context.ActionDescriptor.DisplayName ?? "Unknown";
         var httpMethod = httpContext.Request.Method.ToUpperInvariant();
 
-        var statusCode = executed.Result switch
-        {
-            ObjectResult obj    => obj.StatusCode ?? 200,
-            StatusCodeResult sc => sc.StatusCode,
-            _                   => httpContext.Response.StatusCode
-        };
+        // When the action threw, treat it as a serious failure (outcome 8)
+        var statusCode = executed.Exception != null
+            ? 500
+            : executed.Result switch
+            {
+                ObjectResult obj    => obj.StatusCode ?? 200,
+                StatusCodeResult sc => sc.StatusCode,
+                _                   => httpContext.Response.StatusCode
+            };
 
         var entry = new AuditLog
         {
@@ -44,14 +52,24 @@ public class AuditActionFilter : IAsyncActionFilter
             ResourceType = controllerName,
             ResourceId   = TryGetRouteId(context),
 
-            Controller  = controllerName,
-            Action      = actionName,
-            HttpMethod  = httpMethod,
-            StatusCode  = statusCode,
+            Controller   = controllerName,
+            Action       = actionName,
+            HttpMethod   = httpMethod,
+            StatusCode   = statusCode,
             ErrorMessage = executed.Exception?.Message
         };
 
-        await _audit.LogAsync(entry);
+        try
+        {
+            await _audit.LogAsync(entry);
+        }
+        catch (Exception auditEx)
+        {
+            // Never let an audit failure mask the original exception or crash the response
+            _logger.LogError(auditEx,
+                "Audit log write failed for {Controller}.{Action} — original outcome was {StatusCode}",
+                controllerName, actionName, statusCode);
+        }
     }
 
     private static string HttpMethodToAtnaAction(string method) => method switch
