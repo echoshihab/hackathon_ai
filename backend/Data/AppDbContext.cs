@@ -13,4 +13,5 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<LifestyleGoal> LifestyleGoals => Set<LifestyleGoal>();
     public DbSet<CareTeamContact> CareTeamContacts => Set<CareTeamContact>();
     public DbSet<CarePlan> CarePlans => Set<CarePlan>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 }

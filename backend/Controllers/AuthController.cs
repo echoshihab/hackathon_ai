@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text;
 using backend.DTOs;
 using backend.Models;
+using backend.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -15,11 +16,13 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IConfiguration _config;
+    private readonly IAuditService _audit;
 
-    public AuthController(UserManager<ApplicationUser> userManager, IConfiguration config)
+    public AuthController(UserManager<ApplicationUser> userManager, IConfiguration config, IAuditService audit)
     {
         _userManager = userManager;
         _config = config;
+        _audit = audit;
     }
 
     [HttpPost("register")]
@@ -36,9 +39,39 @@ public class AuthController : ControllerBase
     {
         var user = await _userManager.FindByEmailAsync(dto.Email);
         if (user == null || !await _userManager.CheckPasswordAsync(user, dto.Password))
+        {
+            await _audit.LogAsync(new AuditLog
+            {
+                EventType    = "UserAuthentication",
+                EventAction  = "E",
+                EventOutcome = 4,
+                UserName     = dto.Email,
+                NetworkAccessPoint = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                Controller   = "Auth",
+                Action       = "Login",
+                HttpMethod   = "POST",
+                StatusCode   = 401,
+                ErrorMessage = "Invalid credentials"
+            });
             return Unauthorized("Invalid credentials");
+        }
 
         var token = GenerateJwt(user);
+
+        await _audit.LogAsync(new AuditLog
+        {
+            EventType    = "UserAuthentication",
+            EventAction  = "E",
+            EventOutcome = 0,
+            UserId       = user.Id,
+            UserName     = user.Email,
+            NetworkAccessPoint = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Controller   = "Auth",
+            Action       = "Login",
+            HttpMethod   = "POST",
+            StatusCode   = 200
+        });
+
         return Ok(new { token });
     }
 
